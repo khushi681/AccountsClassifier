@@ -1,0 +1,6 @@
+InvoiceNumber,InvoiceDate,CustomerName,Amount
+INV001,10-01-2025,ABC Ltd,5000
+INV002,12-01-2025,XYZ Traders,3200
+INV003,15-01-2025,Star Enterprises,4500
+INV004,20-01-2025,Future Tech,2800
+INV005,22-01-2025,GreenFoods,3900
