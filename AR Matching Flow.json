@@ -1,0 +1,826 @@
+{
+  "name": "AR Matching Flow",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "f041b160-7c0b-4ff3-a716-52aecf137fd0",
+      "name": "When clicking execute workflow",
+      "type": "n8n-nodes-base.manualTrigger",
+      "position": [
+        -3232,
+        320
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "1eNiPcye6AhHiIf9EYT82jvfy9MTaeFn2",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "accf7215-27ae-4fa5-9813-a9a33927a0a6",
+      "name": "Download file (Invoices)",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -2976,
+        160
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "7k9AoqF3Chcq6O0W",
+          "name": "Google Drive account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "1VRILSUTuCTwhegAlGFKOULiuJBCqSXQ4",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "id": "e21841c8-2cb1-4962-94b0-85f2d36dbada",
+      "name": "Download file (Receipts)",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -2976,
+        464
+      ],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "7k9AoqF3Chcq6O0W",
+          "name": "Google Drive account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "return items.map(i => {\n  const j = i.json || {};\n\n  // Normalize date: convert DD-MM-YYYY → YYYY-MM-DD\n  let invoiceDateRaw = (j.InvoiceDate || '').trim();\n  let formattedDate = '';\n\n  if (invoiceDateRaw.includes('-')) {\n    const parts = invoiceDateRaw.split('-');\n    if (parts.length === 3) {\n      formattedDate = `${parts[2]}-${parts[1]}-${parts[0]}`;\n    }\n  }\n\n  return {\n    json: {\n      InvoiceNumber: (j[\"Invoice Number\"] || '')\n        .toString()\n        .trim()\n        .toUpperCase(),\n\n      InvoiceDate: formattedDate,\n\n      CustomerName: (j.CustomerName || '').toString().trim(),\n\n      Amount: Number(\n        String(j.Amount || '')\n          .replace(/[^0-9.\\-]/g, '')\n          .replace(/,/g, '')\n      ) || 0\n    }\n  };\n});\n"
+      },
+      "id": "e02ec310-4d6a-432e-9766-ac78ff103607",
+      "name": "Normalize Invoices",
+      "type": "n8n-nodes-base.function",
+      "position": [
+        -2080,
+        160
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "functionCode": "return items.map(i => {\n  const j = i.json || {};\n\n  // Normalize date: convert DD-MM-YYYY → YYYY-MM-DD\n  let receivedDateRaw = (j[\"RecievedDate\"] || '').trim();\n  let formattedDate = '';\n\n  if (receivedDateRaw.includes('-')) {\n    const parts = receivedDateRaw.split('-');\n    if (parts.length === 3) {\n      // DD-MM-YYYY → YYYY-MM-DD\n      formattedDate = `${parts[2]}-${parts[1]}-${parts[0]}`;\n    }\n  }\n\n  return {\n    json: {\n      ReceiptID: (j[\"ReceiptID\"] || '')\n        .toString()\n        .trim()\n        .toUpperCase(),\n\n      ReceiptInvoiceNumber: (j[\"RecieptInvoiceNumber\"] || '')\n        .toString()\n        .trim()\n        .toUpperCase(),\n\n      ReceivedDate: formattedDate,\n\n      AmountReceived: Number(\n        String(j[\"AmountRecieved\"] || '')\n          .replace(/[^0-9.\\-]/g, '')\n          .replace(/,/g, '')\n      ) || 0\n    }\n  };\n});\n"
+      },
+      "id": "8b60e99e-a666-420b-968d-47196461e66f",
+      "name": "Normalize Receipts",
+      "type": "n8n-nodes-base.function",
+      "position": [
+        -2016,
+        496
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "options": {
+          "delimiter": ",",
+          "encoding": "utf-8",
+          "headerRow": true
+        }
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        -2768,
+        464
+      ],
+      "id": "04942583-71f5-4e95-a7d2-77276dd164ef",
+      "name": "Extract from File1"
+    },
+    {
+      "parameters": {
+        "options": {
+          "delimiter": ",",
+          "encoding": "utf-8",
+          "headerRow": true
+        }
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        -2768,
+        160
+      ],
+      "id": "919d7ab5-a9f5-4643-9646-aca796f30988",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "advanced": true,
+        "mergeByFields": {
+          "values": [
+            {
+              "field1": "InvoiceNumber",
+              "field2": "ReceiptInvoiceNumber"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -688,
+        272
+      ],
+      "id": "28346717-0aef-479e-90f5-abbf0369de6d",
+      "name": "Matched Entries"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "advanced": true,
+        "mergeByFields": {
+          "values": [
+            {
+              "field1": "InvoiceNumber",
+              "field2": "ReceiptInvoiceNumber"
+            }
+          ]
+        },
+        "joinMode": "enrichInput1",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -1152,
+        -384
+      ],
+      "id": "0804f92a-c8f2-4d85-a2f0-f1552c2f4bb9",
+      "name": "Unmatched Invoices"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "7a72ffc0-1ff8-4aea-9f3d-291722136e8c",
+              "leftValue": "={{ $json.ReceiptInvoiceNumber }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -800,
+        -304
+      ],
+      "id": "3ca80170-f99d-477f-bd61-81d9894386ef",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "e5c774f2-a311-4b52-857b-b4e6cc750aea",
+              "leftValue": "={{ $json.InvoiceNumber }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "empty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -688,
+        1072
+      ],
+      "id": "723c2fed-1c24-4df9-a41f-c31656ae5597",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "advanced": true,
+        "mergeByFields": {
+          "values": [
+            {
+              "field1": "InvoiceNumber",
+              "field2": "ReceiptInvoiceNumber"
+            }
+          ]
+        },
+        "joinMode": "enrichInput2",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -1088,
+        944
+      ],
+      "id": "018f5348-8f57-4b9a-a055-6cd68c85f97b",
+      "name": "Unmatched reciepts"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1qBgyzkrYCV53H0yqzbMtXQnXypF-r31nE5T8JcZCHXE",
+          "mode": "list",
+          "cachedResultName": "Uninv",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1qBgyzkrYCV53H0yqzbMtXQnXypF-r31nE5T8JcZCHXE/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1qBgyzkrYCV53H0yqzbMtXQnXypF-r31nE5T8JcZCHXE/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "InvoiceNumber": "={{ $json.InvoiceNumber }}",
+            "InvoiceDate": "={{ $json.InvoiceDate }}",
+            "CutomerName": "={{ $json.CustomerName }}",
+            "Amount": "={{ $json.Amount }}",
+            "Status": "unmatched",
+            "note": "No receipts found"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "InvoiceNumber",
+              "displayName": "InvoiceNumber",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "InvoiceDate",
+              "displayName": "InvoiceDate",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "CutomerName",
+              "displayName": "CutomerName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Amount",
+              "displayName": "Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "note",
+              "displayName": "note",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -240,
+        -224
+      ],
+      "id": "2d50dc3b-d6be-43d9-9375-b9d657305f08",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "xGMKsQNpn3snZMm4",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1KlnHQ45_o2qy_6toAig9e4lyEN841inFcDTF4c_ga0I",
+          "mode": "list",
+          "cachedResultName": "Unreceipt",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1KlnHQ45_o2qy_6toAig9e4lyEN841inFcDTF4c_ga0I/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1KlnHQ45_o2qy_6toAig9e4lyEN841inFcDTF4c_ga0I/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "ReceiptID": "={{ $json.ReceiptID }}",
+            "ReceiptinvoiceNumber": "={{ $json.ReceiptInvoiceNumber }}",
+            "ReceivedDate": "={{ $json.ReceivedDate }}",
+            "ReceivedAmount": "={{ $json.AmountReceived }}",
+            "status": "unmatched"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "ReceiptID",
+              "displayName": "ReceiptID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ReceiptinvoiceNumber",
+              "displayName": "ReceiptinvoiceNumber",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ReceivedDate",
+              "displayName": "ReceivedDate",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ReceivedAmount",
+              "displayName": "ReceivedAmount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -32,
+        768
+      ],
+      "id": "9f3bdb09-e4ac-465f-8d5d-6eeeac02c051",
+      "name": "Append row in sheet1",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "xGMKsQNpn3snZMm4",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "jhakhushi.1802@gmail.com",
+        "subject": "unmatched entries",
+        "message": "There are unmatched invoices in account",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -32,
+        -224
+      ],
+      "id": "130e854c-535c-412b-983b-cb435137e0fa",
+      "name": "Send a message",
+      "webhookId": "01f71eb2-b13a-4b7a-bb79-9bca98b7e67b",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "GUZf3vRzMPCOZO9z",
+          "name": "Gmail account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1kVDP0UGZna1wvOsEfVFsFAq9HQsR8jp_zxqTEZL-qVY",
+          "mode": "list",
+          "cachedResultName": "AR_match",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1kVDP0UGZna1wvOsEfVFsFAq9HQsR8jp_zxqTEZL-qVY/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1kVDP0UGZna1wvOsEfVFsFAq9HQsR8jp_zxqTEZL-qVY/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "InvoiceNumber": "={{ $json.InvoiceNumber }}",
+            "InvoiceDate": "={{ $json.InvoiceDate }}",
+            "CustomerName": "={{ $json.CustomerName }}",
+            "Amount": "={{ $json.Amount }}",
+            "ReceiptID": "={{ $json.ReceiptID }}",
+            "ReceiptInvoicenumber": "={{ $json.ReceiptInvoiceNumber }}",
+            "RecievedDate": "={{ $json.ReceivedDate }}",
+            "AmountRceived": "={{ $json.AmountReceived }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "InvoiceNumber",
+              "displayName": "InvoiceNumber",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "InvoiceDate",
+              "displayName": "InvoiceDate",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "CustomerName",
+              "displayName": "CustomerName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Amount",
+              "displayName": "Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ReceiptID",
+              "displayName": "ReceiptID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ReceiptInvoicenumber",
+              "displayName": "ReceiptInvoicenumber",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "RecievedDate",
+              "displayName": "RecievedDate",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "AmountRceived",
+              "displayName": "AmountRceived",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -480,
+        272
+      ],
+      "id": "8a51c5a5-6fbb-4932-99db-3c6c7050a3be",
+      "name": "Append row in sheet2",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "xGMKsQNpn3snZMm4",
+          "name": "Google Sheets account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "jhakhushi.1802@gmail.com",
+        "subject": "new unmatched entries",
+        "message": "There are new unmatched reciepts",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        176,
+        768
+      ],
+      "id": "b99f74d0-d6b6-4656-970f-bc104a3bddc6",
+      "name": "Send a message1",
+      "webhookId": "ff207ed4-6095-45a3-a9ad-58671b22ac66",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "GUZf3vRzMPCOZO9z",
+          "name": "Gmail account 2"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking execute workflow": {
+      "main": [
+        [
+          {
+            "node": "Download file (Invoices)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Download file (Receipts)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Invoices": {
+      "main": [
+        [
+          {
+            "node": "Matched Entries",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Unmatched Invoices",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Unmatched reciepts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Receipts": {
+      "main": [
+        [
+          {
+            "node": "Matched Entries",
+            "type": "main",
+            "index": 1
+          },
+          {
+            "node": "Unmatched Invoices",
+            "type": "main",
+            "index": 1
+          },
+          {
+            "node": "Unmatched reciepts",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Download file (Invoices)": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download file (Receipts)": {
+      "main": [
+        [
+          {
+            "node": "Extract from File1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File1": {
+      "main": [
+        [
+          {
+            "node": "Normalize Receipts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Normalize Invoices",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Matched Entries": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Unmatched Invoices": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Unmatched reciepts": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet1": {
+      "main": [
+        [
+          {
+            "node": "Send a message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "68bcb699-3c1f-4629-9346-b7e092d61e5e",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "3c6d0c72c01f3c9b8b0fa1f2f7511dd43d7b7cc9684bcbf6b5f6cbf05d7a1ab9"
+  },
+  "id": "WDov6u8BfFFW6zfn",
+  "tags": []
+}
